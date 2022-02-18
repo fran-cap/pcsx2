@@ -833,6 +833,8 @@ void GSRendererNew::EmulateBlending(bool& DATE_PRIMID, bool& DATE_BARRIER)
 
 					const u8 swap_blend_index = alpha_c0_high_min_one ? 11u : alpha_c2_high_one ? 17u : blend_index;
 					m_conf.blend = {swap_blend_index, ALPHA.FIX - 0x80u, ALPHA.C == 2, false, true};
+
+					fprintf(stderr, "Blend Mix4,  AC %u\n", ALPHA.C);
 				}
 				m_conf.ps.blend_a = 0;
 				m_conf.ps.blend_b = 2;
