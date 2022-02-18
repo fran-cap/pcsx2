@@ -749,7 +749,7 @@ void ps_blend(inout float4 Color, float As, float2 pos_xy)
 		float3 D = (PS_BLEND_D == 0) ? Cs : ((PS_BLEND_D == 1) ? Cd : (float3)0.0f);
 
 		// As/Af clamp alpha for Blend mix
-		if (PS_BLEND_MIX)
+		if (PS_BLEND_MIX && PS_CLR_HW != 7)
 			C = min(C, (float)1.0f);
 
 		Color.rgb = (PS_BLEND_A == PS_BLEND_B) ? D : trunc(((A - B) * C) + D);
@@ -853,6 +853,11 @@ PS_OUTPUT ps_main(PS_INPUT input)
 	ps_color_clamp_wrap(C.rgb);
 
 	ps_fbmask(C, input.p.xy);
+
+	if (PS_CLR_HW == 7)
+	{
+		alpha_blend -= 1.0f;
+	}
 
 	output.c0 = C / 255.0f;
 	output.c1 = (float4)(alpha_blend);

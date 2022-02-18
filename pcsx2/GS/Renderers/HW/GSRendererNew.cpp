@@ -570,10 +570,12 @@ void GSRendererNew::EmulateBlending(bool& DATE_PRIMID, bool& DATE_BARRIER)
 	const bool blend_mix1 = !!(blend_flag & BLEND_MIX1);
 	const bool blend_mix2 = !!(blend_flag & BLEND_MIX2);
 	const bool blend_mix3 = !!(blend_flag & BLEND_MIX3);
-	bool blend_mix = (blend_mix1 || blend_mix2 || blend_mix3);
+	const bool blend_mix4 = !!(blend_flag & BLEND_MIX4);
+	bool blend_mix = (blend_mix1 || blend_mix2 || blend_mix3 || blend_mix4);
 
 	const bool alpha_c2_high_one = (ALPHA.C == 2 && ALPHA.FIX > 128u);
 	const bool alpha_c0_high_max_one = (ALPHA.C == 0 && GetAlphaMinMax().max > 128);
+	const bool alpha_c0_high_min_one = (ALPHA.C == 0 && GetAlphaMinMax().min > 128);
 
 	// Blend can be done on hw. As and F cases should be accurate.
 	// BLEND_C_CLR1 with Ad, BLEND_C_CLR3  Cs > 0.5f will require sw blend.
@@ -820,6 +822,21 @@ void GSRendererNew::EmulateBlending(bool& DATE_PRIMID, bool& DATE_BARRIER)
 				m_conf.ps.blend_a = 2;
 				m_conf.ps.blend_b = 0;
 				m_conf.ps.blend_d = 0;
+			}
+			else if (blend_mix4)
+			{
+				if (alpha_c0_high_min_one || alpha_c2_high_one)
+				{
+					// Disable alpha clamp, keep it commented out, we rely on the clr_hw bit to disable it.
+					//m_conf.ps.blend_mix = 0;
+					m_conf.ps.clr_hw = 7;
+
+					const u8 swap_blend_index = alpha_c0_high_min_one ? 11u : alpha_c2_high_one ? 17u : blend_index;
+					m_conf.blend = {swap_blend_index, ALPHA.FIX - 0x80u, ALPHA.C == 2, false, true};
+				}
+				m_conf.ps.blend_a = 0;
+				m_conf.ps.blend_b = 2;
+				m_conf.ps.blend_d = 2;
 			}
 
 			// Only Ad case will require one barrier

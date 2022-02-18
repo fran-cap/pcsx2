@@ -116,10 +116,11 @@ public:
 enum HWBlendFlags
 {
 	// A couple of flag to determine the blending behavior
-	BLEND_CD        = 0x8,    // Output is Cd, hw blend can handle it
-	BLEND_MIX1      = 0x10,   // Mix of hw and sw, do Cs*F or Cs*As in shader
-	BLEND_MIX2      = 0x20,   // Mix of hw and sw, do Cs*(As + 1) or Cs*(F + 1) in shader
-	BLEND_MIX3      = 0x40,   // Mix of hw and sw, do Cs*(1 - As) or Cs*(1 - F) in shader
+	BLEND_CD        = 0x4,    // Output is Cd, hw blend can handle it
+	BLEND_MIX1      = 0x8,    // Mix of hw and sw, do Cs*F or Cs*As in shader
+	BLEND_MIX2      = 0x10,   // Mix of hw and sw, do Cs*(As + 1) or Cs*(F + 1) in shader
+	BLEND_MIX3      = 0x20,   // Mix of hw and sw, do Cs*(1 - As) or Cs*(1 - F) in shader
+	BLEND_MIX4      = 0x40,   // Similar to MIX1, but replace  + Cd*(1 - As) or + Cd*(1 - F) with - Cd*(Alpha - 1) when Alpha > 1.
 	BLEND_A_MAX     = 0x80,   // Impossible blending uses coeff bigger than 1
 	BLEND_C_CLR1    = 0x100,  // Clear color blending (use directly the destination color as blending factor)
 	BLEND_C_CLR2_AF = 0x200,  // Clear color blending (use directly the destination color as blending factor)
