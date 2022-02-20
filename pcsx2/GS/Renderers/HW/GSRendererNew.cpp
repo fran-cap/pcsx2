@@ -572,8 +572,13 @@ void GSRendererNew::EmulateBlending(bool& DATE_PRIMID, bool& DATE_BARRIER)
 	const bool blend_mix3 = !!(blend_flag & BLEND_MIX3);
 	bool blend_mix = (blend_mix1 || blend_mix2 || blend_mix3);
 
+	const bool alpha_c2_one = (ALPHA.C == 2 && ALPHA.FIX == 128u);
 	const bool alpha_c2_high_one = (ALPHA.C == 2 && ALPHA.FIX > 128u);
+	const bool alpha_c0_one = (ALPHA.C == 0 && (GetAlphaMinMax().min == 128) && (GetAlphaMinMax().max == 128));
 	const bool alpha_c0_high_max_one = (ALPHA.C == 0 && GetAlphaMinMax().max > 128);
+
+	// Cs* As + Cd*(1 - As) or Cs*F + Cd*(1 - F) where Alpha is 128 (1)
+	const bool blend_sw = (blend_flag & BLEND_SW) && (alpha_c0_one || alpha_c2_one);
 
 	// Blend can be done on hw. As and F cases should be accurate.
 	// BLEND_C_CLR1 with Ad, BLEND_C_CLR3  Cs > 0.5f will require sw blend.
@@ -597,6 +602,7 @@ void GSRendererNew::EmulateBlending(bool& DATE_PRIMID, bool& DATE_BARRIER)
 		// SW Blend is (nearly) free. Let's use it.
 		const bool impossible_or_free_blend = (blend_flag & BLEND_A_MAX) // Impossible blending
 			|| blend_non_recursive                 // Free sw blending, doesn't require barriers or reading fb
+			|| blend_sw
 			|| accumulation_blend                  // Mix of hw/sw blending
 			|| (m_prim_overlap == PRIM_OVERLAP_NO) // Blend can be done in a single draw
 			|| (m_conf.require_full_barrier);      // Another effect (for example fbmask) already requires a full barrier
@@ -671,7 +677,7 @@ void GSRendererNew::EmulateBlending(bool& DATE_PRIMID, bool& DATE_BARRIER)
 				// Disable accumulation blend when there is fbmask with no overlap, will be faster.
 				color_dest_blend   &= !fbmask_no_overlap;
 				accumulation_blend &= !fbmask_no_overlap;
-				sw_blending |= accumulation_blend || blend_non_recursive || fbmask_no_overlap;
+				sw_blending |= accumulation_blend || blend_non_recursive || fbmask_no_overlap || blend_sw;
 				// Try to do hw blend for clr2 case.
 				sw_blending &= !clr_blend1_2;
 				// Do not run BLEND MIX if sw blending is already present, it's less accurate
@@ -690,9 +696,9 @@ void GSRendererNew::EmulateBlending(bool& DATE_PRIMID, bool& DATE_BARRIER)
 	{
 		bool free_colclip = false;
 		if (g_gs_device->Features().texture_barrier)
-			free_colclip = m_prim_overlap == PRIM_OVERLAP_NO || blend_non_recursive;
+			free_colclip = m_prim_overlap == PRIM_OVERLAP_NO || blend_non_recursive || blend_sw;
 		else
-			free_colclip = blend_non_recursive;
+			free_colclip = blend_non_recursive || blend_sw;
 
 		GL_DBG("COLCLIP Info (Blending: %u/%u/%u/%u, OVERLAP: %d)", ALPHA.A, ALPHA.B, ALPHA.C, ALPHA.D, m_prim_overlap);
 		if (color_dest_blend)
@@ -833,6 +839,17 @@ void GSRendererNew::EmulateBlending(bool& DATE_PRIMID, bool& DATE_BARRIER)
 				// Swap Ad with As for hw blend
 				m_conf.ps.clr_hw = 6;
 			}
+		}
+		else if (blend_sw)
+		{
+			// Blend mix should be disabled by now
+
+			// Disable HW blending
+			m_conf.blend = {};
+
+			m_conf.ps.blend_a = 0;
+			m_conf.ps.blend_b = 2;
+			m_conf.ps.blend_d = 2;
 		}
 		else
 		{
