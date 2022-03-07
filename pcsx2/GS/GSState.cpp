@@ -894,6 +894,8 @@ void GSState::GIFRegHandlerTEX0(const GIFReg* RESTRICT r)
 
 	GIFRegTEX0 TEX0 = r->TEX0;
 	GIFRegMIPTBP1 temp_MIPTBP1;
+	bool MTBAReloaded = false;
+	const u32 maxTex = (TEX0.PSM >= 0x2 && TEX0.PSM <= 0x14) ? 10 : 9;
 
 	// Spec max is 10
 	//
@@ -911,7 +913,9 @@ void GSState::GIFRegHandlerTEX0(const GIFReg* RESTRICT r)
 
 	// MTBA loads are triggered by writes to TEX0 (but not TEX2!)
 	// Textures must be a minimum width of 32 pixels
-	if (m_env.CTXT[i].TEX1.MTBA && TEX0.TW >= 5)
+	// Max allowed size for 32bit swizzled textures (including 8H 4HL etc) is 512
+	// TODO: Check what happens with Z textures, especially non-16bit 1024x1024 ones.
+	if (m_env.CTXT[i].TEX1.MTBA && TEX0.TW >= 5 && TEX0.TW <= maxTex)
 	{
 		// NOTE 1: TEX1.MXL must not be automatically set to 3 here.
 		// NOTE 2: Mipmap levels are tightly packed, if (tbw << 6) > (1 << tw) then the left-over space to the right is used. (common for PSM_PSMT4)
@@ -919,32 +923,29 @@ void GSState::GIFRegHandlerTEX0(const GIFReg* RESTRICT r)
 		// NOTE 4: Cartoon Network Racing's menu is VERY sensitive to this as it uses 4bit sized textures for the sky.
 
 		u32 bp = TEX0.TBP0;
-		u32 w = 1u << TEX0.TW;
-		u32 bw = std::max(1U, w >> 6);
-
-		const u32 bpp = GSLocalMemory::m_psm[TEX0.PSM].bpp >> 2;
+		u32 bw = std::max(1u, (1u << TEX0.TW) >> 6);
 
 		// Address is calculated as a 4bit address space, then converted (/8) to 32bit address space
-		// ((w * h * bpp) / 8) / 64
-		// TODO: Check if the bp is rounded up to the nearest block if it's calulated to be less
-		bp += std::max(1, (int)((w * w * bpp) >> 9));
+		// ((w * w * bpp) / 8) / 64. No the 'w' is not a typo ;)
+		const u32 bpp = GSLocalMemory::m_psm[TEX0.PSM].bpp >> 2;
+		u32 tex_size = ((1u << TEX0.TW) * (1u << TEX0.TW) * bpp) >> 9;
 
+		// TODO: Check if the bp is rounded up to the nearest block if it's calulated to be less
+		bp += tex_size;
 		bw = std::max<u32>(bw >> 1, 1);
-		w = std::max<u32>(w >> 1, 1);
+		tex_size = std::max<u32>(tex_size >> 2, 1);
 
 		temp_MIPTBP1.TBP1 = bp;
 		temp_MIPTBP1.TBW1 = bw;
 
-		bp += std::max(1, (int)((w * w * bpp) >> 9));
-
-		bw =std::max<u32>(bw >> 1, 1);
-		w = std::max<u32>(w >> 1, 1);
+		bp += tex_size;
+		bw = std::max<u32>(bw >> 1, 1);
+		tex_size = std::max<u32>(tex_size >> 2, 1);
 
 		temp_MIPTBP1.TBP2 = bp;
 		temp_MIPTBP1.TBW2 = bw;
 
-		bp += std::max(1, (int)((w * w * bpp) >> 9));
-
+		bp += tex_size;
 		bw = std::max<u32>(bw >> 1, 1);
 
 		temp_MIPTBP1.TBP3 = bp;
@@ -952,10 +953,13 @@ void GSState::GIFRegHandlerTEX0(const GIFReg* RESTRICT r)
 
 		if (temp_MIPTBP1 != m_env.CTXT[i].MIPTBP1)
 			Flush();
+
+		MTBAReloaded = true;
 	}
+
 	ApplyTEX0<i>(TEX0);
 
-	if (m_env.CTXT[i].TEX1.MTBA)
+	if (MTBAReloaded)
 		m_env.CTXT[i].MIPTBP1 = temp_MIPTBP1;
 }
 
