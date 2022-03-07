@@ -156,7 +156,6 @@ protected:
 	int m_skip;
 	int m_skip_offset;
 	bool m_userhacks_auto_flush;
-	bool tex_flushed;
 
 	GSVertex m_v;
 	float m_q;

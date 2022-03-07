@@ -132,7 +132,6 @@ GSState::GSState()
 	PRIM = &m_env.PRIM;
 	//CSR->rREV = 0x20;
 	m_env.PRMODECONT.AC = 1;
-	tex_flushed = true;
 
 	Reset();
 
@@ -894,7 +893,7 @@ void GSState::GIFRegHandlerTEX0(const GIFReg* RESTRICT r)
 	GL_REG("TEX0_%d = 0x%x_%x", i, r->U32[1], r->U32[0]);
 
 	GIFRegTEX0 TEX0 = r->TEX0;
-	const bool MTBAreload = ((tex_flushed  && (i == m_env.PRIM.CTXT)) || (r->TEX0.TBP0 != m_env.CTXT[i].TEX0.TBP0)) ? true : false;
+	GIFRegMIPTBP1 temp_MIPTBP1;
 
 	// Spec max is 10
 	//
@@ -910,61 +909,54 @@ void GSState::GIFRegHandlerTEX0(const GIFReg* RESTRICT r)
 	TEX0.TW = std::clamp<u32>(TEX0.TW, 0, 10);
 	TEX0.TH = std::clamp<u32>(TEX0.TH, 0, 10);
 
-	ApplyTEX0<i>(TEX0);
-
-	// When the texture cache reloads any MIPS need to update too, so let's do that here.
-	// This is essentially triggered by the texture page change, so if TEXFLUSH is called and a draw doesn't proceed it, or TBP changes.
-	// Textures must be of equal width/height and a minimum of 32x32
-	if (MTBAreload && m_env.CTXT[i].TEX1.MTBA && m_env.CTXT[i].TEX0.TW == m_env.CTXT[i].TEX0.TH && m_env.CTXT[i].TEX0.TW >= 5)
+	// MTBA loads are triggered by writes to TEX0 (but not TEX2!)
+	// Textures must be a minimum width of 32 pixels
+	if (m_env.CTXT[i].TEX1.MTBA && TEX0.TW >= 5)
 	{
 		// NOTE 1: TEX1.MXL must not be automatically set to 3 here.
 		// NOTE 2: Mipmap levels are tightly packed, if (tbw << 6) > (1 << tw) then the left-over space to the right is used. (common for PSM_PSMT4)
-		// NOTE 3: Non-rectangular textures are treated as rectangular when calculating the occupied space (height is extended, not sure about width)
+		// NOTE 3: Everything is derrived from the width of the texture, TBW and TH are completely ignored (useful for handling non-rectangular ones)
+		// NOTE 4: Cartoon Network Racing's menu is VERY sensitive to this as it uses 4bit sized textures for the sky.
 
-		u32 bp = m_env.CTXT[i].TEX0.TBP0;
-		u32 bw = m_env.CTXT[i]. TEX0.TBW;
-		u32 w = 1u << m_env.CTXT[i].TEX0.TW;
-		u32 h = 1u << m_env.CTXT[i].TEX0.TH;
-		u32 minwidth = m_env.CTXT[i].TEX1.MMIN >= 4 ? 8 : 1;
+		u32 bp = TEX0.TBP0;
+		u32 w = 1u << TEX0.TW;
+		u32 bw = std::max(1U, w >> 6);
 
-		const u32 bpp = GSLocalMemory::m_psm[m_env.CTXT[i].TEX0.PSM].bpp;
+		const u32 bpp = GSLocalMemory::m_psm[TEX0.PSM].bpp >> 2;
 
-		bp += (int)((w * h * ((float)bpp / 8))) >> 8;
+		// Address is calculated as a 4bit address space, then converted (/8) to 32bit address space
+		// ((w * h * bpp) / 8) / 64
+		// TODO: Check if the bp is rounded up to the nearest block if it's calulated to be less
+		bp += std::max(1, (int)((w * w * bpp) >> 9));
 
-		if (w > minwidth)
-		{
-			bw = std::max<u32>(bw >> 1, 1);
-			w = std::max<u32>(w >> 1, 1);
-			h = std::max<u32>(h >> 1, 1);
-		}
+		bw = std::max<u32>(bw >> 1, 1);
+		w = std::max<u32>(w >> 1, 1);
 
-		m_env.CTXT[i].MIPTBP1.TBP1 = bp;
-		m_env.CTXT[i].MIPTBP1.TBW1 = bw;
+		temp_MIPTBP1.TBP1 = bp;
+		temp_MIPTBP1.TBW1 = bw;
 
-		bp += (int)((w * h * ((float)bpp / 8))) >> 8;
+		bp += std::max(1, (int)((w * w * bpp) >> 9));
 
-		if (w > minwidth)
-		{
-			bw = std::max<u32>(bw >> 1, 1);
-			w = std::max<u32>(w >> 1, 1);
-			h = std::max<u32>(h >> 1, 1);
-		}
+		bw =std::max<u32>(bw >> 1, 1);
+		w = std::max<u32>(w >> 1, 1);
 
-		m_env.CTXT[i].MIPTBP1.TBP2 = bp;
-		m_env.CTXT[i].MIPTBP1.TBW2 = bw;
+		temp_MIPTBP1.TBP2 = bp;
+		temp_MIPTBP1.TBW2 = bw;
 
-		bp += (int)((w * h * ((float)bpp / 8))) >> 8;
+		bp += std::max(1, (int)((w * w * bpp) >> 9));
 
-		if (w > minwidth)
-		{
-			bw = std::max<u32>(bw >> 1, 1);
-		}
+		bw = std::max<u32>(bw >> 1, 1);
 
-		m_env.CTXT[i].MIPTBP1.TBP3 = bp;
-		m_env.CTXT[i].MIPTBP1.TBW3 = bw;
+		temp_MIPTBP1.TBP3 = bp;
+		temp_MIPTBP1.TBW3 = bw;
+
+		if (temp_MIPTBP1 != m_env.CTXT[i].MIPTBP1)
+			Flush();
 	}
+	ApplyTEX0<i>(TEX0);
 
-	tex_flushed = false;
+	if (m_env.CTXT[i].TEX1.MTBA)
+		m_env.CTXT[i].MIPTBP1 = temp_MIPTBP1;
 }
 
 template <int i>
@@ -1132,7 +1124,6 @@ void GSState::GIFRegHandlerTEXFLUSH(const GIFReg* RESTRICT r)
 {
 	GL_REG("TEXFLUSH = 0x%x_%x PRIM TME %x", r->U32[1], r->U32[0], PRIM->TME);
 
-	tex_flushed = true;
 	// Some games do a single sprite draw to itself, then flush the texture cache, then use that texture again.
 	// This won't get picked up by the new autoflush logic (which checks for page crossings for the PS2 Texture Cache flush)
 	// so we need to do it here.
@@ -2768,9 +2759,6 @@ __forceinline void GSState::VertexKick(u32 skip)
 		default:
 			__assume(0);
 	}
-
-	if (PRIM->TME)
-		tex_flushed = false;
 }
 
 /// Checks if region repeat is used (applying it does something to at least one of the values in min...max)
@@ -3201,7 +3189,7 @@ bool GSState::IsOpaque()
 
 bool GSState::IsMipMapDraw()
 {
-	return m_context->TEX1.MXL > 0 && m_context->TEX1.MMIN >= 2 && m_context->TEX1.MMIN <= 5 && m_vt.m_lod.y > 0 && (!m_context->TEX1.MTBA || m_context->TEX0.TH == m_context->TEX0.TW);
+	return m_context->TEX1.MXL > 0 && m_context->TEX1.MMIN >= 2 && m_context->TEX1.MMIN <= 5 && m_vt.m_lod.y > 0;
 }
 
 bool GSState::IsMipMapActive()
