@@ -1,6 +1,12 @@
 .*.swp
 .*.swn
 .*.swo
+.*.png
+.*.psd
+.*.7z
+*.png
+*.psd
+*.7z
 
 *.suo
 *.ncb

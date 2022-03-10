@@ -243,7 +243,8 @@ void vtlb_memWrite(u32 addr, DataType data)
 			}
 		}
 
-		*reinterpret_cast<DataType*>(vmv.assumePtr(addr))=data;
+
+        *reinterpret_cast<DataType*>(vmv.assumePtr(addr))=data;
 	}
 	else
 	{

@@ -344,6 +344,7 @@ Pcsx2Config::GSOptions::GSOptions()
 
 	DumpReplaceableTextures = false;
 	DumpReplaceableMipmaps = false;
+	DumpLoadIgnoreTex0 = false;
 	DumpTexturesWithFMVActive = false;
 	DumpDirectTextures = true;
 	DumpPaletteTextures = true;
@@ -577,6 +578,7 @@ void Pcsx2Config::GSOptions::ReloadIniSettings()
 	GSSettingBool(LoadTextureReplacements);
 	GSSettingBool(LoadTextureReplacementsAsync);
 	GSSettingBool(PrecacheTextureReplacements);
+	GSSettingBoolEx(DumpLoadIgnoreTex0, "DumpLoadIgnoreTex0");
 
 	GSSettingIntEnumEx(InterlaceMode, "deinterlace");
 

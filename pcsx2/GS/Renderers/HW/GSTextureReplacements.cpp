@@ -170,7 +170,7 @@ TextureName GSTextureReplacements::CreateTextureName(const GSTextureCache::HashC
 	name.TEXA_TA0 = hash.TEXA.TA0;
 	name.TEXA_AEM = hash.TEXA.AEM;
 	name.TEXA_TA1 = hash.TEXA.TA1;
-	name.TEX0Hash = hash.TEX0Hash;
+	name.TEX0Hash = GSConfig.DumpLoadIgnoreTex0 ? 0 : hash.TEX0Hash;
 	name.CLUTHash = name.HasPalette() ? hash.CLUTHash : 0;
 	name.miplevel = miplevel;
 	return name;

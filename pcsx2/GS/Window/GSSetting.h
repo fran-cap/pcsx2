@@ -71,6 +71,8 @@ enum
 	IDC_SKIPDRAWSTART,
 	IDC_SKIPDRAWOFFSETEDIT,
 	IDC_TEX_IN_RT,
+	//Texture Replacment Options
+	IDC_TEX0_IGN,
 	// Upscaling Hacks
 	IDC_ALIGN_SPRITE,
 	IDC_MERGE_PP_SPRITE,
