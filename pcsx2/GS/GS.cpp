@@ -1438,6 +1438,7 @@ void GSApp::Init()
 	m_default_configuration["dump"]                                       = "0";
 	m_default_configuration["DumpReplaceableTextures"]                    = "0";
 	m_default_configuration["DumpReplaceableMipmaps"]                     = "0";
+    m_default_configuration["DumpLoadIgnoreTex0"]                         = "0";
 	m_default_configuration["DumpTexturesWithFMVActive"]                  = "0";
 	m_default_configuration["DumpDirectTextures"]                         = "1";
 	m_default_configuration["DumpPaletteTextures"]                        = "1";

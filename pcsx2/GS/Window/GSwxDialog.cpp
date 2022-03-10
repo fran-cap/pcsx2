@@ -595,6 +595,7 @@ DebugTab::DebugTab(wxWindow* parent)
 
 	PaddedBoxSizer<wxStaticBoxSizer> tex_box(wxVERTICAL, this, "Texture Replacements");
 	auto* tex_grid = new wxFlexGridSizer(2, space, space);
+	m_ui.addCheckBox(tex_grid, "Ignore TEX0 Hash", "DumpLoadIgnoreTex0", IDC_TEX0_IGN);
 	m_ui.addCheckBox(tex_grid, "Dump Textures",         "DumpReplaceableTextures",      -1);
 	m_ui.addCheckBox(tex_grid, "Dump Mipmaps",          "DumpReplaceableMipmaps",       -1);
 	m_ui.addCheckBox(tex_grid, "Dump FMV Textures",     "DumpTexturesWithFMVActive",    -1);

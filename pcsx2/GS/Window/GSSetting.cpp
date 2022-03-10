@@ -199,6 +199,9 @@ const char* dialog_message(int ID, bool* updateText)
 		case IDC_TEX_IN_RT:
 			return cvtString("Allows the texture cache to reuse as an input texture the inner portion of a previous framebuffer.\n"
 				"In some selected games this is enabled by default regardless of this setting.");
+		case IDC_TEX0_IGN:
+			return cvtString("Stops the texture lookup and replacement commands from using the TEX0 Hash.\n"
+							 "Enable if you see duplicate textures where the area outside the main texture has random image information.");
 		default:
 			if (updateText)
 				*updateText = false;
