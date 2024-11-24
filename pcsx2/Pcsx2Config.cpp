@@ -752,6 +752,7 @@ Pcsx2Config::GSOptions::GSOptions()
 
 	DumpReplaceableTextures = false;
 	DumpReplaceableMipmaps = false;
+	DumpLoadIgnoreTex0 = false;
 	DumpTexturesWithFMVActive = false;
 	DumpDirectTextures = true;
 	DumpPaletteTextures = true;
